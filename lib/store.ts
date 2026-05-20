@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Product } from './data';
 
 export interface CartItem {
   id: string; // unique string for the item + its variants

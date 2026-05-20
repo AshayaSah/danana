@@ -125,6 +125,39 @@ export async function ensureTables() {
   `);
 }
 
+export async function ensureOrdersTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS orders (
+      id          uuid    PRIMARY KEY DEFAULT gen_random_uuid(),
+      customer_name text  NOT NULL,
+      phone       text    NOT NULL,
+      address     text,
+      items       jsonb   NOT NULL DEFAULT '[]',
+      subtotal    numeric NOT NULL DEFAULT 0,
+      status      text    NOT NULL DEFAULT 'pending',
+      created_at  timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+}
+
+export async function getProducts(activeOnly = true) {
+  await ensureTables();
+  const where = activeOnly ? 'WHERE is_active = true' : '';
+  const res = await pool.query(
+    `SELECT * FROM products ${where} ORDER BY created_at DESC`
+  );
+  return res.rows;
+}
+
+export async function getProductBySlug(slug: string) {
+  await ensureTables();
+  const res = await pool.query(
+    'SELECT * FROM products WHERE slug = $1 LIMIT 1',
+    [slug]
+  );
+  return res.rows[0] ?? null;
+}
+
 export async function createNotificationClient() {
   const client = new Client({ connectionString });
   await client.connect();

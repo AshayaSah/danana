@@ -1,7 +1,7 @@
 "use client";
 
-import type { FormEvent, ReactNode } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import type { FormEvent, ReactNode, ChangeEvent } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -11,7 +11,36 @@ import {
   Pencil,
   Trash2,
   X,
+  Upload,
 } from 'lucide-react';
+
+// ─── Cloudinary upload ────────────────────────────────────────────────────────
+
+async function uploadToCloudinary(file: File): Promise<string> {
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+  if (!cloudName || !uploadPreset) {
+    throw new Error(
+      'Cloudinary is not configured. Set NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME and NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET in your .env file.'
+    );
+  }
+
+  const body = new FormData();
+  body.append('file', file);
+  body.append('upload_preset', uploadPreset);
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+    { method: 'POST', body }
+  );
+
+  if (!res.ok) throw new Error('Cloudinary upload failed');
+
+  const data = await res.json();
+  // Inject q_auto,f_auto into the delivery URL for automatic compression + format
+  return (data.secure_url as string).replace('/upload/', '/upload/q_auto,f_auto/');
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -54,6 +83,27 @@ type FormState = {
   is_active: boolean;
   variants: FormVariant[];
   image_groups: FormImageGroup[];
+};
+
+type OrderItem = {
+  productId: string;
+  productTitle: string;
+  price: number;
+  image?: string;
+  color?: string;
+  size?: string;
+  quantity: number;
+};
+
+type Order = {
+  id: string;
+  customer_name: string;
+  phone: string;
+  address: string | null;
+  items: OrderItem[];
+  subtotal: number;
+  status: 'pending' | 'contacted' | 'completed';
+  created_at: string;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -138,6 +188,14 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [uploadingGroup, setUploadingGroup] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Orders state
+  const [activeTable, setActiveTable] = useState<'products' | 'orders'>('products');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -155,6 +213,32 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   useEffect(() => {
     loadProducts();
   }, [loadProducts]);
+
+  const loadOrders = useCallback(async () => {
+    setOrdersLoading(true);
+    try {
+      const res = await fetch('/api/orders', { cache: 'no-store' });
+      const data = await res.json();
+      setOrders(Array.isArray(data) ? data : []);
+    } catch {
+      setOrders([]);
+    } finally {
+      setOrdersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTable === 'orders') loadOrders();
+  }, [activeTable, loadOrders]);
+
+  async function updateOrderStatus(orderId: string, status: Order['status']) {
+    await fetch(`/api/orders/${orderId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status } : o)));
+  }
 
   // ── Navigation ──────────────────────────────────────────────────────────────
 
@@ -211,6 +295,32 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       ...c,
       image_groups: c.image_groups.map((g, idx) => (idx === i ? { ...g, [field]: value } : g)),
     }));
+
+  // ── Cloudinary image upload ──────────────────────────────────────────────────
+
+  function triggerUpload(groupIndex: number) {
+    setUploadingGroup(groupIndex);
+    fileInputRef.current?.click();
+  }
+
+  async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || uploadingGroup === null) return;
+
+    setUploading(true);
+    try {
+      const url = await uploadToCloudinary(file);
+      const existing = form.image_groups[uploadingGroup]?.urls ?? '';
+      updateGroup(uploadingGroup, 'urls', existing ? `${existing}\n${url}` : url);
+    } catch (err) {
+      console.error(err);
+      alert((err as Error).message);
+    } finally {
+      setUploading(false);
+      setUploadingGroup(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
 
   // ── Submit ──────────────────────────────────────────────────────────────────
 
@@ -396,10 +506,10 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
 
                         {/* Price */}
                         <div className="hidden lg:block">
-                          <div className="text-[14px] font-medium">${Number(product.base_price).toFixed(2)}</div>
+                          <div className="text-[14px] font-medium">Rs. {Number(product.base_price).toLocaleString()}</div>
                           {product.compare_price && (
                             <div className="text-[12px] text-[#696969] line-through">
-                              ${Number(product.compare_price).toFixed(2)}
+                              Rs. {Number(product.compare_price).toLocaleString()}
                             </div>
                           )}
                         </div>
@@ -666,6 +776,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                           </button>
                         )}
                       </div>
+                      {/* URL textarea */}
                       <textarea
                         value={g.urls}
                         onChange={(e) => updateGroup(i, 'urls', e.target.value)}
@@ -673,9 +784,29 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                         placeholder={'https://example.com/front.jpg\nhttps://example.com/back.jpg'}
                         className="w-full border-b border-gray-200 py-2 text-[11px] font-mono outline-none focus:border-black bg-transparent resize-y placeholder:text-[#aaa]"
                       />
+
+                      {/* Upload button */}
+                      <button
+                        type="button"
+                        onClick={() => triggerUpload(i)}
+                        disabled={uploading && uploadingGroup === i}
+                        className="mt-2 flex items-center gap-1.5 text-[12px] text-[#696969] hover:text-black transition-colors disabled:opacity-50"
+                      >
+                        <Upload className="h-3.5 w-3.5" />
+                        {uploading && uploadingGroup === i ? 'Uploading…' : 'Upload from device'}
+                      </button>
                     </div>
                   ))}
                 </div>
+
+                {/* Hidden file input — shared across all groups */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
 
                 <button
                   type="button"
