@@ -292,7 +292,9 @@ export default function CheckoutPage() {
                         <div className="mt-1 flex flex-col gap-0.5">
                           {item.comboItems.map((ci, i) => (
                             <div key={i} className="text-[11px] text-[#696969]">
-                              {ci.productName} — <span className="font-medium text-black">{ci.size}</span>
+                              {ci.productName} —&ensp;
+                              {ci.kit && <><span className="font-medium text-black">{ci.kit}</span>&ensp;·&ensp;</>}
+                              <span className="font-medium text-black">{ci.size}</span>
                             </div>
                           ))}
                         </div>

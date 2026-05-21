@@ -23,6 +23,7 @@ export type ComboItem = {
   product_name: string;
   image: string;
   base_price: number;
+  selected_groups?: string[]; // image group labels the admin chose to include in this combo
 };
 
 export type DbCombo = {

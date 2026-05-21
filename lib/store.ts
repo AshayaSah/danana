@@ -12,7 +12,7 @@ export interface CartItem {
   quantity: number;
   // Combo bundles — when true the item represents an entire combo deal
   isCombo?: boolean;
-  comboItems?: Array<{ productName: string; size: string }>;
+  comboItems?: Array<{ productName: string; size: string; kit?: string }>;
 }
 
 interface CartStore {

@@ -55,79 +55,71 @@ export default async function HomePage() {
 
       {/* ── Combo deals ── */}
       {combos.length > 0 && (
-        <section className="max-w-[1440px] mx-auto w-full px-4 sm:px-6 py-10">
+        <section className="max-w-[1440px] mx-auto w-full px-4 sm:px-6 py-12">
           <div className="flex justify-between items-end mb-8">
             <div>
               <p className="text-[11px] uppercase tracking-[0.28em] text-[#696969] mb-1">Better together</p>
               <h2 className="text-[28px] font-semibold text-black">Combo Deals</h2>
             </div>
-            <Link href="/combos" className="text-[#696969] hover:text-black text-sm hidden sm:block">
+            <Link href="/combos" className="text-[#696969] hover:text-black text-sm hidden sm:block transition-colors">
               See all deals
             </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {combos.slice(0, 3).map(combo => {
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-10">
+            {combos.slice(0, 6).map(combo => {
               const savings = Number(combo.original_price) - Number(combo.combo_price);
-              const pct = combo.original_price
+              const pct     = Number(combo.original_price) > 0
                 ? Math.round((savings / Number(combo.original_price)) * 100)
                 : 0;
               const bgImage = combo.image_url || combo.items?.[0]?.image || null;
+
               return (
-                <Link key={combo.id} href="/combos" className="group relative block overflow-hidden bg-gray-900">
-                  {/* Background image */}
-                  <div className="relative aspect-[3/4] overflow-hidden">
+                <Link key={combo.id} href="/combos" className="group flex flex-col gap-0">
+
+                  {/* Image */}
+                  <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden">
                     {bgImage ? (
                       <img
                         src={bgImage}
                         alt={combo.name}
-                        className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:scale-105 group-hover:opacity-85 transition-all duration-700 ease-out"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]"
                       />
                     ) : (
-                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900" />
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-gray-300 text-sm">No image</span>
+                      </div>
                     )}
-                    {/* Gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
-
-                    {/* % off badge */}
                     {pct > 0 && (
-                      <span className="absolute top-3.5 right-3.5 bg-[#EDE735] text-black text-[11px] font-bold px-2.5 py-1 tracking-wide">
-                        -{pct}% OFF
+                      <span className="absolute top-2.5 left-2.5 bg-[#FA5D42] text-white text-[10px] font-bold px-2 py-0.5">
+                        -{pct}%
                       </span>
                     )}
+                  </div>
 
-                    {/* Product thumbnails */}
-                    {(combo.items ?? []).length > 0 && (
-                      <div className="absolute top-3.5 left-3.5 flex gap-1.5">
-                        {combo.items.slice(0, 3).map((item: ComboItem) => (
-                          <div key={item.product_id} className="w-10 h-12 bg-white/10 border border-white/25 overflow-hidden backdrop-blur-sm">
-                            {item.image && (
-                              <img src={item.image} alt={item.product_name} className="w-full h-full object-cover" />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                  {/* Content */}
+                  <div className="pt-3 flex flex-col gap-2 px-1">
+                    <h3 className="text-[14px] text-black group-hover:opacity-70 transition-opacity leading-snug">
+                      {combo.name}
+                    </h3>
 
-                    {/* Bottom content */}
-                    <div className="absolute bottom-0 left-0 right-0 p-5">
-                      <h3 className="text-white text-[17px] font-semibold leading-snug">{combo.name}</h3>
-                      <p className="text-white/55 text-[12px] mt-1 truncate">
-                        {(combo.items ?? []).map((i: ComboItem) => i.product_name).join(' + ')}
-                      </p>
-                      <div className="flex items-baseline gap-2.5 mt-3">
-                        {savings > 0 && (
-                          <span className="text-white/40 line-through text-[13px]">
-                            Rs. {Number(combo.original_price).toLocaleString()}
-                          </span>
-                        )}
-                        <span className="text-white text-[20px] font-bold">
-                          Rs. {Number(combo.combo_price).toLocaleString()}
-                        </span>
-                      </div>
+                    <p className="text-[11px] text-[#696969] truncate">
+                      {(combo.items ?? []).map((i: ComboItem) => i.product_name).join(' + ')}
+                    </p>
+
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       {savings > 0 && (
-                        <p className="text-[#4ade80] text-[12px] font-medium mt-1">
-                          Save Rs. {savings.toLocaleString()}
-                        </p>
+                        <span className="text-[#696969] line-through text-[13px]">
+                          Rs. {Number(combo.original_price).toLocaleString()}
+                        </span>
+                      )}
+                      <span className="text-[#FA5D42] text-[14px] font-medium">
+                        Rs. {Number(combo.combo_price).toLocaleString()}
+                      </span>
+                      {savings > 0 && (
+                        <span className="text-[11px] text-[#027D48] font-medium">
+                          · save Rs. {savings.toLocaleString()}
+                        </span>
                       )}
                     </div>
                   </div>

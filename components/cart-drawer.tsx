@@ -87,6 +87,7 @@ export function CartDrawer() {
                           {item.comboItems.map((ci, i) => (
                             <div key={i} className="text-[11px] text-[#696969]">
                               {ci.productName}&ensp;—&ensp;
+                              {ci.kit && <><span className="font-medium text-black">{ci.kit}</span>&ensp;·&ensp;</>}
                               <span className="font-medium text-black">{ci.size}</span>
                             </div>
                           ))}
