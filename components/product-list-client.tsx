@@ -49,8 +49,12 @@ export function ProductListClient({
 
   const [products, setProducts] = useState<DbProduct[]>([]);
   const [loading,  setLoading]  = useState(true);
-  // Local search query — filters instantly without URL round-trip
   const [query, setQuery] = useState(searchParams.get('q') ?? initialQ);
+
+  // Sync query state when the URL `q` param changes (e.g. navbar search while already on this page)
+  useEffect(() => {
+    setQuery(searchParams.get('q') ?? '');
+  }, [searchParams]);
 
   // Derive filter values from URL (live) with initial prop fallbacks
   const gender   = searchParams.get('gender')   ?? (initialGender   === 'all' ? '' : initialGender   ?? '');

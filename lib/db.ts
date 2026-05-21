@@ -208,6 +208,28 @@ export async function ensurePromoCodesTable() {
   `);
 }
 
+// ─── Messages ─────────────────────────────────────────────────────────────────
+
+export async function ensureMessagesTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS messages (
+      id         uuid    PRIMARY KEY DEFAULT gen_random_uuid(),
+      name       text    NOT NULL,
+      phone      text    NOT NULL,
+      email      text,
+      message    text    NOT NULL,
+      is_read    boolean NOT NULL DEFAULT false,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+}
+
+export async function getMessages() {
+  await ensureMessagesTable();
+  const res = await pool.query('SELECT * FROM messages ORDER BY created_at DESC');
+  return res.rows;
+}
+
 // ─── Notification client ─────────────────────────────────────────────────────
 
 export async function createNotificationClient() {

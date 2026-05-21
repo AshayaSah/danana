@@ -22,9 +22,11 @@ export default async function AllProductsPage({
 }) {
   const params = await searchParams;
 
-  const pageTitle = params.gender && GENDER_LABEL[params.gender]
-    ? `${GENDER_LABEL[params.gender]} Collection`
-    : 'All Products';
+  const pageTitle = params.q
+    ? `Search: "${params.q}"`
+    : params.gender && GENDER_LABEL[params.gender]
+      ? `${GENDER_LABEL[params.gender]} Collection`
+      : 'All Products';
 
   return (
     <div className="flex flex-col pb-20">

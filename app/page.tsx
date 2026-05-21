@@ -25,9 +25,11 @@ export default async function HomePage() {
         <img src={heroImage} alt="DANANA — New Season Collection"
           className="w-full h-full object-cover object-center" />
         <div className="absolute inset-0 bg-black/15" />
-        <div className="absolute bottom-10 left-6 sm:left-10">
-          <p className="text-white/70 text-xs uppercase tracking-[0.3em] mb-2">New Season</p>
-          <h2 className="text-white text-4xl sm:text-5xl font-serif tracking-widest">DANANA</h2>
+        <div className="absolute bottom-10 left-0 right-0">
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6">
+            <p className="text-white/70 text-xs uppercase tracking-[0.3em] mb-2">New Season</p>
+            <h2 className="text-white text-4xl sm:text-5xl font-serif tracking-widest">DANANA</h2>
+          </div>
         </div>
       </section>
 
@@ -53,52 +55,73 @@ export default async function HomePage() {
 
       {/* ── Combo deals ── */}
       {combos.length > 0 && (
-        <section className="max-w-[1440px] mx-auto w-full px-4 sm:px-6 py-10">
+        <section className="max-w-[1440px] mx-auto w-full px-4 sm:px-6 py-12">
           <div className="flex justify-between items-end mb-8">
             <div>
               <p className="text-[11px] uppercase tracking-[0.28em] text-[#696969] mb-1">Better together</p>
               <h2 className="text-[28px] font-semibold text-black">Combo Deals</h2>
             </div>
-            <Link href="/combos" className="text-[#696969] hover:text-black text-sm hidden sm:block">
+            <Link href="/combos" className="text-[#696969] hover:text-black text-sm hidden sm:block transition-colors">
               See all deals
             </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {combos.slice(0, 3).map(combo => {
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-10">
+            {combos.slice(0, 6).map(combo => {
               const savings = Number(combo.original_price) - Number(combo.combo_price);
-              const pct = combo.original_price
+              const pct     = Number(combo.original_price) > 0
                 ? Math.round((savings / Number(combo.original_price)) * 100)
                 : 0;
+              const bgImage = combo.image_url || combo.items?.[0]?.image || null;
+
               return (
-                <Link key={combo.id} href="/combos" className="group block border border-gray-100 bg-white p-6 hover:border-black transition-colors">
-                  {/* Product image strip */}
-                  {(combo.items ?? []).length > 0 && (
-                    <div className="flex gap-2 mb-5">
-                      {combo.items.slice(0, 3).map((item: ComboItem) => (
-                        <div key={item.product_id} className="w-16 h-20 bg-gray-100 overflow-hidden">
-                          {item.image && <img src={item.image} alt={item.product_name} className="w-full h-full object-cover" />}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-[15px] font-medium">{combo.name}</h3>
-                      <p className="text-[12px] text-[#696969] mt-1">
-                        {(combo.items ?? []).map((i: ComboItem) => i.product_name).join(' + ')}
-                      </p>
-                    </div>
+                <Link key={combo.id} href="/combos" className="group flex flex-col gap-0">
+
+                  {/* Image */}
+                  <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden">
+                    {bgImage ? (
+                      <img
+                        src={bgImage}
+                        alt={combo.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-gray-300 text-sm">No image</span>
+                      </div>
+                    )}
                     {pct > 0 && (
-                      <span className="shrink-0 bg-[#EDE735] text-black text-[11px] font-bold px-2 py-0.5">
+                      <span className="absolute top-2.5 left-2.5 bg-[#FA5D42] text-white text-[10px] font-bold px-2 py-0.5">
                         -{pct}%
                       </span>
                     )}
                   </div>
-                  <div className="flex items-baseline gap-3 mt-3">
-                    {savings > 0 && (
-                      <span className="text-[#696969] line-through text-sm">Rs. {Number(combo.original_price).toLocaleString()}</span>
-                    )}
-                    <span className="text-[#FA5D42] text-lg font-semibold">Rs. {Number(combo.combo_price).toLocaleString()}</span>
+
+                  {/* Content */}
+                  <div className="pt-3 flex flex-col gap-2 px-1">
+                    <h3 className="text-[14px] text-black group-hover:opacity-70 transition-opacity leading-snug">
+                      {combo.name}
+                    </h3>
+
+                    <p className="text-[11px] text-[#696969] truncate">
+                      {(combo.items ?? []).map((i: ComboItem) => i.product_name).join(' + ')}
+                    </p>
+
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      {savings > 0 && (
+                        <span className="text-[#696969] line-through text-[13px]">
+                          Rs. {Number(combo.original_price).toLocaleString()}
+                        </span>
+                      )}
+                      <span className="text-[#FA5D42] text-[14px] font-medium">
+                        Rs. {Number(combo.combo_price).toLocaleString()}
+                      </span>
+                      {savings > 0 && (
+                        <span className="text-[11px] text-[#027D48] font-medium">
+                          · save Rs. {savings.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </Link>
               );

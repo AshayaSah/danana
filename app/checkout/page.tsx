@@ -106,10 +106,18 @@ export default function CheckoutPage() {
             </svg>
           </div>
           <h1 className="text-3xl font-semibold mb-3">Order Placed!</h1>
-          <p className="text-[#696969] text-sm mb-1">
+          <p className="text-[#696969] text-sm mb-4">
             Thank you, <span className="font-medium text-black">{formData.fullName}</span>.
           </p>
-          <p className="text-xs text-[#aaa] mb-4">Ref: {orderId.slice(0, 8).toUpperCase()}</p>
+          <div className="border border-gray-200 bg-gray-50 px-4 py-3 mb-4 text-left">
+            <p className="text-[10px] uppercase tracking-[0.22em] text-[#696969] mb-1.5">Your Order ID — save this</p>
+            <p className="text-[13px] font-mono text-black break-all select-all">{orderId}</p>
+            <p className="text-[11px] text-[#aaa] mt-1.5">
+              Use this ID on the{' '}
+              <a href="/view-orders" className="underline hover:text-black">View Orders</a>
+              {' '}page to track your order at any time.
+            </p>
+          </div>
           {discount > 0 && (
             <p className="text-[13px] text-[#027D48] font-medium mb-4">
               You saved Rs. {discount.toLocaleString()} with code {promoResult?.code}!
@@ -292,7 +300,9 @@ export default function CheckoutPage() {
                         <div className="mt-1 flex flex-col gap-0.5">
                           {item.comboItems.map((ci, i) => (
                             <div key={i} className="text-[11px] text-[#696969]">
-                              {ci.productName} — <span className="font-medium text-black">{ci.size}</span>
+                              {ci.productName} —&ensp;
+                              {ci.kit && <><span className="font-medium text-black">{ci.kit}</span>&ensp;·&ensp;</>}
+                              <span className="font-medium text-black">{ci.size}</span>
                             </div>
                           ))}
                         </div>
