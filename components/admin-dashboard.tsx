@@ -11,8 +11,12 @@ import {
   Pencil,
   Trash2,
   X,
-  Upload,
+  ShoppingBag,
+  Phone,
+  RefreshCw,
+  MapPin,
 } from 'lucide-react';
+import { ImageGroupEditor } from './image-group-editor';
 
 // ─── Cloudinary upload ────────────────────────────────────────────────────────
 
@@ -38,8 +42,13 @@ async function uploadToCloudinary(file: File): Promise<string> {
   if (!res.ok) throw new Error('Cloudinary upload failed');
 
   const data = await res.json();
-  // Inject q_auto,f_auto into the delivery URL for automatic compression + format
-  return (data.secure_url as string).replace('/upload/', '/upload/q_auto,f_auto/');
+
+  // Build the delivery URL from public_id so transformations are never duplicated,
+  // regardless of what the upload preset may have already applied to secure_url.
+  const publicId: string = data.public_id;
+  if (!publicId) throw new Error('Cloudinary response missing public_id');
+
+  return `https://res.cloudinary.com/${cloudName}/image/upload/q_auto,f_auto/${publicId}`;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -67,7 +76,7 @@ type Product = {
 };
 
 type FormVariant = { size: string; stock: string };
-type FormImageGroup = { label: string; urls: string };
+type FormImageGroup = { label: string; urls: string[] };
 
 type FormState = {
   name: string;
@@ -124,7 +133,7 @@ const EMPTY_FORM: FormState = {
   meta_keywords: '',
   is_active: true,
   variants: [{ size: 'M', stock: '0' }],
-  image_groups: [{ label: '', urls: '' }],
+  image_groups: [{ label: '', urls: [] }],
 };
 
 // ─── Shared style constants ───────────────────────────────────────────────────
@@ -164,8 +173,8 @@ function productToForm(p: Product): FormState {
         : [{ size: 'M', stock: '0' }],
     image_groups:
       (p.image_groups ?? []).length > 0
-        ? (p.image_groups ?? []).map((g) => ({ label: g.label, urls: g.images.join('\n') }))
-        : [{ label: '', urls: '' }],
+        ? (p.image_groups ?? []).map((g) => ({ label: g.label, urls: g.images ?? [] }))
+        : [{ label: '', urls: [] }],
   };
 }
 
@@ -287,13 +296,27 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
 
   // Image groups
   const addGroup = () =>
-    setForm((c) => ({ ...c, image_groups: [...c.image_groups, { label: '', urls: '' }] }));
+    setForm((c) => ({ ...c, image_groups: [...c.image_groups, { label: '', urls: [] }] }));
   const removeGroup = (i: number) =>
     setForm((c) => ({ ...c, image_groups: c.image_groups.filter((_, idx) => idx !== i) }));
-  const updateGroup = (i: number, field: keyof FormImageGroup, value: string) =>
+  const updateGroupLabel = (i: number, label: string) =>
     setForm((c) => ({
       ...c,
-      image_groups: c.image_groups.map((g, idx) => (idx === i ? { ...g, [field]: value } : g)),
+      image_groups: c.image_groups.map((g, idx) => (idx === i ? { ...g, label } : g)),
+    }));
+  const addImageToGroup = (i: number, url: string) =>
+    setForm((c) => ({
+      ...c,
+      image_groups: c.image_groups.map((g, idx) =>
+        idx === i ? { ...g, urls: [...g.urls, url] } : g
+      ),
+    }));
+  const removeImageFromGroup = (gi: number, ii: number) =>
+    setForm((c) => ({
+      ...c,
+      image_groups: c.image_groups.map((g, idx) =>
+        idx === gi ? { ...g, urls: g.urls.filter((_, i) => i !== ii) } : g
+      ),
     }));
 
   // ── Cloudinary image upload ──────────────────────────────────────────────────
@@ -310,8 +333,7 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     setUploading(true);
     try {
       const url = await uploadToCloudinary(file);
-      const existing = form.image_groups[uploadingGroup]?.urls ?? '';
-      updateGroup(uploadingGroup, 'urls', existing ? `${existing}\n${url}` : url);
+      addImageToGroup(uploadingGroup, url);
     } catch (err) {
       console.error(err);
       alert((err as Error).message);
@@ -344,14 +366,8 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
         .filter((v) => v.size)
         .map((v) => ({ size: v.size, stock: parseInt(v.stock) || 0 })),
       image_groups: form.image_groups
-        .filter((g) => g.label || g.urls)
-        .map((g) => ({
-          label: g.label,
-          images: g.urls
-            .split(/[\n,]/)
-            .map((u) => u.trim())
-            .filter(Boolean),
-        })),
+        .filter((g) => g.label || g.urls.length > 0)
+        .map((g) => ({ label: g.label, images: g.urls })),
     };
 
     const res = await fetch(
@@ -397,20 +413,40 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 overflow-y-auto">
           <p className="text-[10px] uppercase tracking-[0.25em] text-[#aaa] px-2 mb-3">Tables</p>
-          <button
-            onClick={() => { setView('list'); }}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-md text-[13px] transition-colors ${
-              true ? 'bg-black text-white' : 'text-black hover:bg-gray-50'
-            }`}
-          >
-            <span className="flex items-center gap-2.5">
-              <Package className="h-3.5 w-3.5 shrink-0" />
-              Products
-            </span>
-            <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full shrink-0">
-              {products.length}
-            </span>
-          </button>
+
+          <div className="flex flex-col gap-1">
+            <button
+              onClick={() => { setActiveTable('products'); setView('list'); }}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-md text-[13px] transition-colors ${
+                activeTable === 'products' ? 'bg-black text-white' : 'text-black hover:bg-gray-50'
+              }`}
+            >
+              <span className="flex items-center gap-2.5">
+                <Package className="h-3.5 w-3.5 shrink-0" />
+                Products
+              </span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${activeTable === 'products' ? 'bg-white/20' : 'bg-gray-100'}`}>
+                {products.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTable('orders')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-md text-[13px] transition-colors ${
+                activeTable === 'orders' ? 'bg-black text-white' : 'text-black hover:bg-gray-50'
+              }`}
+            >
+              <span className="flex items-center gap-2.5">
+                <ShoppingBag className="h-3.5 w-3.5 shrink-0" />
+                Orders
+              </span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${activeTable === 'orders' ? 'bg-white/20' : 'bg-gray-100'}`}>
+                {orders.filter((o) => o.status === 'pending').length > 0
+                  ? orders.filter((o) => o.status === 'pending').length
+                  : orders.length}
+              </span>
+            </button>
+          </div>
         </nav>
 
         {/* Footer */}
@@ -428,7 +464,189 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       {/* ── MAIN ────────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto min-h-screen">
 
-        {view === 'list' ? (
+        {activeTable === 'orders' ? (
+          /* ── ORDERS LIST ─────────────────────────────────────────────── */
+          <div className="flex flex-col min-h-full">
+
+            {/* Header */}
+            <div className="bg-white border-b border-gray-100 px-8 py-5 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-xl font-medium">Orders</h2>
+                <p className="text-[13px] text-[#696969] mt-0.5">
+                  {ordersLoading
+                    ? 'Loading…'
+                    : `${orders.length} total · ${orders.filter((o) => o.status === 'pending').length} pending`}
+                </p>
+              </div>
+              <button
+                onClick={loadOrders}
+                disabled={ordersLoading}
+                className="flex items-center gap-2 border border-gray-200 px-3 py-2 text-[13px] hover:border-black transition-colors disabled:opacity-40"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${ordersLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
+
+            {/* Status filter tabs */}
+            <div className="bg-white border-b border-gray-100 px-8 flex gap-1 shrink-0">
+              {(['all', 'pending', 'contacted', 'completed'] as const).map((tab) => {
+                const count = tab === 'all'
+                  ? orders.length
+                  : orders.filter((o) => o.status === tab).length;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => {
+                      const el = document.getElementById(`orders-${tab}`);
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="px-4 py-3 text-[12px] uppercase tracking-wide text-[#696969] hover:text-black border-b-2 border-transparent hover:border-black transition-colors capitalize"
+                  >
+                    {tab === 'all' ? 'All' : tab} ({count})
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Orders content */}
+            <div className="flex-1 p-8">
+              {ordersLoading ? (
+                <div className="flex items-center justify-center py-24 text-[13px] text-[#696969]">
+                  Loading orders…
+                </div>
+              ) : orders.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-32 gap-4">
+                  <ShoppingBag className="h-12 w-12 text-gray-200" />
+                  <p className="text-[13px] text-[#696969]">No orders yet</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 max-w-3xl">
+                  {orders.map((order) => {
+                    const statusConfig = {
+                      pending:   { label: 'Pending',   cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+                      contacted: { label: 'Contacted', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+                      completed: { label: 'Completed', cls: 'bg-green-50 text-green-700 border-green-200' },
+                    }[order.status];
+
+                    const date = new Date(order.created_at);
+                    const dateStr = date.toLocaleDateString('en-NP', {
+                      day: 'numeric', month: 'short', year: 'numeric',
+                    });
+                    const timeStr = date.toLocaleTimeString('en-NP', {
+                      hour: '2-digit', minute: '2-digit',
+                    });
+
+                    return (
+                      <div
+                        key={order.id}
+                        className="bg-white border border-gray-100 p-5 flex flex-col gap-4"
+                      >
+                        {/* Row 1: date + status badge */}
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="text-[11px] text-[#aaa] uppercase tracking-wide">
+                              {dateStr} · {timeStr}
+                            </div>
+                            <div className="text-[11px] text-[#aaa] mt-0.5">
+                              #{order.id.slice(0, 8).toUpperCase()}
+                            </div>
+                          </div>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 text-[10px] uppercase tracking-wide font-medium border shrink-0 ${statusConfig.cls}`}>
+                            {statusConfig.label}
+                          </span>
+                        </div>
+
+                        {/* Row 2: customer info */}
+                        <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[15px] font-medium">{order.customer_name}</div>
+
+                            <a
+                              href={`tel:${order.phone}`}
+                              className="inline-flex items-center gap-1.5 text-[13px] text-black hover:text-[#FA5D42] transition-colors mt-1"
+                            >
+                              <Phone className="h-3.5 w-3.5 shrink-0" />
+                              {order.phone}
+                            </a>
+
+                            {order.address && (
+                              <div className="flex items-start gap-1.5 text-[13px] text-[#696969] mt-1">
+                                <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                <span>{order.address}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Total */}
+                          <div className="text-right shrink-0">
+                            <div className="text-[11px] text-[#aaa] uppercase tracking-wide mb-0.5">Total</div>
+                            <div className="text-[16px] font-semibold">
+                              Rs. {Number(order.subtotal).toLocaleString()}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Row 3: ordered items */}
+                        {(order.items ?? []).length > 0 && (
+                          <div className="border-t border-gray-50 pt-3 flex flex-col gap-1.5">
+                            {order.items.map((item, i) => (
+                              <div key={i} className="flex items-center gap-3 text-[13px]">
+                                {item.image && (
+                                  <img
+                                    src={item.image}
+                                    alt={item.productTitle}
+                                    className="w-8 h-8 object-cover bg-gray-100 shrink-0"
+                                  />
+                                )}
+                                <span className="flex-1 truncate">{item.productTitle}</span>
+                                <span className="text-[#696969] shrink-0">
+                                  {[item.color, item.size].filter(Boolean).join(' · ')}
+                                  {' '}&times; {item.quantity}
+                                </span>
+                                <span className="font-medium shrink-0">
+                                  Rs. {(item.price * item.quantity).toLocaleString()}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Row 4: status actions */}
+                        <div className="border-t border-gray-50 pt-3 flex flex-wrap gap-2">
+                          {order.status !== 'contacted' && order.status !== 'completed' && (
+                            <button
+                              onClick={() => updateOrderStatus(order.id, 'contacted')}
+                              className="flex items-center gap-1.5 border border-blue-200 bg-blue-50 text-blue-700 px-3 py-1.5 text-[12px] hover:bg-blue-100 transition-colors"
+                            >
+                              <Phone className="h-3 w-3" /> Mark contacted
+                            </button>
+                          )}
+                          {order.status !== 'completed' && (
+                            <button
+                              onClick={() => updateOrderStatus(order.id, 'completed')}
+                              className="flex items-center gap-1.5 border border-green-200 bg-green-50 text-green-700 px-3 py-1.5 text-[12px] hover:bg-green-100 transition-colors"
+                            >
+                              ✓ Mark completed
+                            </button>
+                          )}
+                          {order.status !== 'pending' && (
+                            <button
+                              onClick={() => updateOrderStatus(order.id, 'pending')}
+                              className="border border-gray-200 text-[#696969] px-3 py-1.5 text-[12px] hover:border-black transition-colors"
+                            >
+                              Reset to pending
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : view === 'list' ? (
           /* ── PRODUCT LIST ──────────────────────────────────────────────── */
           <div className="flex flex-col min-h-full">
 
@@ -752,53 +970,6 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
 
               {/* ── IMAGES ── */}
               <Section title="Image groups">
-                <p className="text-[12px] text-[#696969] mb-5">
-                  Group images by variant label — e.g. &quot;Home Kit&quot;, &quot;Away Kit&quot;, &quot;Red Colorway&quot;. Enter one URL per line.
-                </p>
-
-                <div className="flex flex-col gap-4">
-                  {form.image_groups.map((g, i) => (
-                    <div key={i} className="border border-gray-100 p-4 bg-white">
-                      <div className="flex items-center gap-3 mb-3">
-                        <input
-                          value={g.label}
-                          onChange={(e) => updateGroup(i, 'label', e.target.value)}
-                          placeholder="Label — e.g. Home Kit, Away Kit, Red Colorway"
-                          className="flex-1 border-b border-gray-200 py-1.5 text-sm outline-none focus:border-black bg-transparent placeholder:text-[#aaa]"
-                        />
-                        {form.image_groups.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeGroup(i)}
-                            className="text-[#696969] hover:text-black transition-colors shrink-0"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                      {/* URL textarea */}
-                      <textarea
-                        value={g.urls}
-                        onChange={(e) => updateGroup(i, 'urls', e.target.value)}
-                        rows={3}
-                        placeholder={'https://example.com/front.jpg\nhttps://example.com/back.jpg'}
-                        className="w-full border-b border-gray-200 py-2 text-[11px] font-mono outline-none focus:border-black bg-transparent resize-y placeholder:text-[#aaa]"
-                      />
-
-                      {/* Upload button */}
-                      <button
-                        type="button"
-                        onClick={() => triggerUpload(i)}
-                        disabled={uploading && uploadingGroup === i}
-                        className="mt-2 flex items-center gap-1.5 text-[12px] text-[#696969] hover:text-black transition-colors disabled:opacity-50"
-                      >
-                        <Upload className="h-3.5 w-3.5" />
-                        {uploading && uploadingGroup === i ? 'Uploading…' : 'Upload from device'}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
                 {/* Hidden file input — shared across all groups */}
                 <input
                   ref={fileInputRef}
@@ -808,13 +979,17 @@ export function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                   onChange={handleFileChange}
                 />
 
-                <button
-                  type="button"
-                  onClick={addGroup}
-                  className="mt-3 flex items-center gap-1.5 text-[13px] text-[#696969] hover:text-black transition-colors"
-                >
-                  <PlusCircle className="h-4 w-4" /> Add image group
-                </button>
+                <ImageGroupEditor
+                  groups={form.image_groups}
+                  uploading={uploading}
+                  uploadingGroup={uploadingGroup}
+                  onLabelChange={updateGroupLabel}
+                  onAddImage={addImageToGroup}
+                  onRemoveImage={removeImageFromGroup}
+                  onAddGroup={addGroup}
+                  onRemoveGroup={removeGroup}
+                  onTriggerUpload={triggerUpload}
+                />
               </Section>
 
               {/* ── SEO ── */}
