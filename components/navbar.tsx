@@ -15,13 +15,11 @@ const GENDER_LINKS = [
 ];
 
 const INFO_LINKS = [
-  { label: 'Returns',            href: '/returns'            },
-  { label: 'Shipping',           href: '/shipping'           },
-  { label: 'Order cancellation', href: '/order-cancellation' },
-  { label: 'Payment options',    href: '/payment-options'    },
-  { label: 'About',              href: '/about'              },
-  { label: 'Contact',            href: '/contact'            },
-  { label: 'FAQ',                href: '/faq'                },
+  { label: 'View Orders',     href: '/view-orders'     },
+  { label: 'Payment options', href: '/payment-options' },
+  { label: 'About',           href: '/about'           },
+  { label: 'Contact',         href: '/contact'         },
+  { label: 'FAQ',             href: '/faq'             },
 ];
 
 export function Navbar() {
@@ -152,8 +150,8 @@ export function Navbar() {
         </div>
 
         {/* ── Hamburger dropdown ── */}
-        <div className={`overflow-hidden border-t border-gray-100 bg-white transition-[max-height,opacity] duration-300 ease-out ${
-          isMenuOpen ? 'max-h-[40rem] opacity-100' : 'max-h-0 opacity-0'
+        <div className={`border-t border-gray-100 bg-white transition-[max-height,opacity] duration-300 ease-out ${
+          isMenuOpen ? 'max-h-[40rem] opacity-100 overflow-y-auto' : 'max-h-0 opacity-0 overflow-hidden'
         }`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
             <div className="grid gap-10 lg:grid-cols-[1fr_1fr_1.1fr] items-start">
@@ -183,7 +181,7 @@ export function Navbar() {
                 </div>
               </div>
 
-              <div className="lg:pl-4">
+              <div className="hidden md:block lg:pl-4">
                 <h3 className="text-[11px] uppercase tracking-[0.25em] text-[#696969] mb-5">Store</h3>
                 <Link href="/all-products" onClick={closeMenu} className="block group">
                   <div className="relative aspect-[16/9] w-full overflow-hidden bg-gray-100">

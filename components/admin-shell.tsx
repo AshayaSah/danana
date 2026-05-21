@@ -1,15 +1,16 @@
 'use client';
 import type { ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Package, ShoppingBag, LogOut, Layers, Tag } from 'lucide-react';
+import { Package, ShoppingBag, LogOut, Layers, Tag, MessageSquare } from 'lucide-react';
 
 type Props = { adminEmail: string; children: ReactNode };
 
 const NAV = [
-  { label: 'Products',    href: '/admin',              icon: Package,    match: (p: string) => p === '/admin' || p.startsWith('/admin/products') },
-  { label: 'Combos',      href: '/admin/combos',       icon: Layers,     match: (p: string) => p.startsWith('/admin/combos') },
-  { label: 'Promo Codes', href: '/admin/promo-codes',  icon: Tag,        match: (p: string) => p.startsWith('/admin/promo-codes') },
-  { label: 'Orders',      href: '/admin/orders',       icon: ShoppingBag, match: (p: string) => p.startsWith('/admin/orders') },
+  { label: 'Products',    href: '/admin',               icon: Package,       match: (p: string) => p === '/admin' || p.startsWith('/admin/products') },
+  { label: 'Combos',      href: '/admin/combos',        icon: Layers,        match: (p: string) => p.startsWith('/admin/combos') },
+  { label: 'Promo Codes', href: '/admin/promo-codes',   icon: Tag,           match: (p: string) => p.startsWith('/admin/promo-codes') },
+  { label: 'Orders',      href: '/admin/orders',        icon: ShoppingBag,   match: (p: string) => p.startsWith('/admin/orders') },
+  { label: 'Messages',    href: '/admin/messages',      icon: MessageSquare, match: (p: string) => p.startsWith('/admin/messages') },
 ];
 
 export function AdminShell({ adminEmail, children }: Props) {
