@@ -22,12 +22,19 @@ export function ProductCard({ product }: { product: DbProduct }) {
 
   const selectedVariant = variants.find((v) => v.size === selectedSize);
   const inStock         = selectedVariant ? selectedVariant.stock > 0 : variants.some((v) => v.stock > 0);
+  const maxQty          = selectedVariant ? selectedVariant.stock : Infinity;
+
+  function handleSizeSelect(size: string) {
+    setSelectedSize(size === selectedSize ? '' : size);
+    setQuantity(1);
+  }
 
   function handleAddToCart(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
     if (variants.length > 0 && !selectedSize) return;
     if (selectedVariant && selectedVariant.stock === 0) return;
+    if (selectedVariant && quantity > selectedVariant.stock) return;
 
     addItem({
       productId: product.id,
@@ -96,11 +103,11 @@ export function ProductCard({ product }: { product: DbProduct }) {
 
         {/* Size selector */}
         {variants.length > 0 && (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex items-center gap-1 flex-wrap">
             {variants.map((v) => (
               <button
                 key={v.size}
-                onClick={() => setSelectedSize(v.size === selectedSize ? '' : v.size)}
+                onClick={() => handleSizeSelect(v.size)}
                 disabled={v.stock === 0}
                 className={`min-w-[2rem] px-2 py-1 text-[11px] border transition-colors ${
                   v.stock === 0
@@ -113,6 +120,11 @@ export function ProductCard({ product }: { product: DbProduct }) {
                 {v.size}
               </button>
             ))}
+            {selectedVariant && (
+              <span className="ml-auto text-[11px] text-[#696969] shrink-0">
+                {selectedVariant.stock} in stock
+              </span>
+            )}
           </div>
         )}
 
@@ -128,8 +140,9 @@ export function ProductCard({ product }: { product: DbProduct }) {
             </button>
             <span className="w-6 text-center text-[13px] font-medium select-none">{quantity}</span>
             <button
-              onClick={(e) => { e.stopPropagation(); setQuantity((q) => q + 1); }}
-              className="w-7 h-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-50 transition-colors"
+              onClick={(e) => { e.stopPropagation(); setQuantity((q) => Math.min(q + 1, maxQty)); }}
+              disabled={quantity >= maxQty}
+              className="w-7 h-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-500"
             >
               <Plus className="w-3 h-3" />
             </button>

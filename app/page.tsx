@@ -25,9 +25,11 @@ export default async function HomePage() {
         <img src={heroImage} alt="DANANA — New Season Collection"
           className="w-full h-full object-cover object-center" />
         <div className="absolute inset-0 bg-black/15" />
-        <div className="absolute bottom-10 left-6 sm:left-10">
-          <p className="text-white/70 text-xs uppercase tracking-[0.3em] mb-2">New Season</p>
-          <h2 className="text-white text-4xl sm:text-5xl font-serif tracking-widest">DANANA</h2>
+        <div className="absolute bottom-10 left-0 right-0">
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6">
+            <p className="text-white/70 text-xs uppercase tracking-[0.3em] mb-2">New Season</p>
+            <h2 className="text-white text-4xl sm:text-5xl font-serif tracking-widest">DANANA</h2>
+          </div>
         </div>
       </section>
 
@@ -69,36 +71,65 @@ export default async function HomePage() {
               const pct = combo.original_price
                 ? Math.round((savings / Number(combo.original_price)) * 100)
                 : 0;
+              const bgImage = combo.image_url || combo.items?.[0]?.image || null;
               return (
-                <Link key={combo.id} href="/combos" className="group block border border-gray-100 bg-white p-6 hover:border-black transition-colors">
-                  {/* Product image strip */}
-                  {(combo.items ?? []).length > 0 && (
-                    <div className="flex gap-2 mb-5">
-                      {combo.items.slice(0, 3).map((item: ComboItem) => (
-                        <div key={item.product_id} className="w-16 h-20 bg-gray-100 overflow-hidden">
-                          {item.image && <img src={item.image} alt={item.product_name} className="w-full h-full object-cover" />}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-[15px] font-medium">{combo.name}</h3>
-                      <p className="text-[12px] text-[#696969] mt-1">
-                        {(combo.items ?? []).map((i: ComboItem) => i.product_name).join(' + ')}
-                      </p>
-                    </div>
+                <Link key={combo.id} href="/combos" className="group relative block overflow-hidden bg-gray-900">
+                  {/* Background image */}
+                  <div className="relative aspect-[3/4] overflow-hidden">
+                    {bgImage ? (
+                      <img
+                        src={bgImage}
+                        alt={combo.name}
+                        className="absolute inset-0 w-full h-full object-cover opacity-75 group-hover:scale-105 group-hover:opacity-85 transition-all duration-700 ease-out"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900" />
+                    )}
+                    {/* Gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+
+                    {/* % off badge */}
                     {pct > 0 && (
-                      <span className="shrink-0 bg-[#EDE735] text-black text-[11px] font-bold px-2 py-0.5">
-                        -{pct}%
+                      <span className="absolute top-3.5 right-3.5 bg-[#EDE735] text-black text-[11px] font-bold px-2.5 py-1 tracking-wide">
+                        -{pct}% OFF
                       </span>
                     )}
-                  </div>
-                  <div className="flex items-baseline gap-3 mt-3">
-                    {savings > 0 && (
-                      <span className="text-[#696969] line-through text-sm">Rs. {Number(combo.original_price).toLocaleString()}</span>
+
+                    {/* Product thumbnails */}
+                    {(combo.items ?? []).length > 0 && (
+                      <div className="absolute top-3.5 left-3.5 flex gap-1.5">
+                        {combo.items.slice(0, 3).map((item: ComboItem) => (
+                          <div key={item.product_id} className="w-10 h-12 bg-white/10 border border-white/25 overflow-hidden backdrop-blur-sm">
+                            {item.image && (
+                              <img src={item.image} alt={item.product_name} className="w-full h-full object-cover" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     )}
-                    <span className="text-[#FA5D42] text-lg font-semibold">Rs. {Number(combo.combo_price).toLocaleString()}</span>
+
+                    {/* Bottom content */}
+                    <div className="absolute bottom-0 left-0 right-0 p-5">
+                      <h3 className="text-white text-[17px] font-semibold leading-snug">{combo.name}</h3>
+                      <p className="text-white/55 text-[12px] mt-1 truncate">
+                        {(combo.items ?? []).map((i: ComboItem) => i.product_name).join(' + ')}
+                      </p>
+                      <div className="flex items-baseline gap-2.5 mt-3">
+                        {savings > 0 && (
+                          <span className="text-white/40 line-through text-[13px]">
+                            Rs. {Number(combo.original_price).toLocaleString()}
+                          </span>
+                        )}
+                        <span className="text-white text-[20px] font-bold">
+                          Rs. {Number(combo.combo_price).toLocaleString()}
+                        </span>
+                      </div>
+                      {savings > 0 && (
+                        <p className="text-[#4ade80] text-[12px] font-medium mt-1">
+                          Save Rs. {savings.toLocaleString()}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </Link>
               );

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { DbCombo, DbProduct } from '@/lib/types';
 import { useCartStore } from '@/lib/store';
 import { ShoppingCart } from 'lucide-react';
@@ -16,48 +16,79 @@ export function CombosClient({ combos, products }: Props) {
   );
 }
 
-// ── Auto-sliding image carousel ──────────────────────────────────────────────
+// ── Gallery ──────────────────────────────────────────────────────────────────
 
-function ComboCarousel({ images, title }: { images: string[]; title: string }) {
-  const [idx, setIdx] = useState(0);
+type GallerySection = { label: string; images: string[] };
 
-  useEffect(() => {
-    if (images.length <= 1) return;
-    const t = setInterval(() => setIdx((i) => (i + 1) % images.length), 3000);
-    return () => clearInterval(t);
-  }, [images.length]);
+function ComboGallery({ sections }: { sections: GallerySection[] }) {
+  const [activeSection, setActiveSection] = useState(0);
+  const [activeImg,     setActiveImg]     = useState(0);
 
-  if (images.length === 0) {
+  const nonEmpty = sections.filter((s) => s.images.length > 0);
+
+  if (nonEmpty.length === 0) {
     return <div className="w-full aspect-[4/5] bg-gray-100" />;
   }
 
-  return (
-    <div className="relative w-full aspect-[4/5] overflow-hidden bg-gray-100">
-      {images.map((src, i) => (
-        <img
-          key={src}
-          src={src}
-          alt={title}
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
-            i === idx ? 'opacity-100' : 'opacity-0'
-          }`}
-        />
-      ))}
+  const clampedSection = Math.min(activeSection, nonEmpty.length - 1);
+  const currentSection = nonEmpty[clampedSection];
+  const images         = currentSection.images;
+  const clampedImg     = Math.min(activeImg, images.length - 1);
+  const mainSrc        = images[clampedImg];
 
-      {/* Dot indicators */}
-      {images.length > 1 && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-          {images.map((_, i) => (
+  function switchSection(i: number) {
+    setActiveSection(i);
+    setActiveImg(0);
+  }
+
+  return (
+    <div className="flex flex-col">
+      {/* Section tabs — one per product + optional bundle */}
+      {nonEmpty.length > 1 && (
+        <div className="flex gap-1 flex-wrap p-3 border-b border-gray-50">
+          {nonEmpty.map((sec, i) => (
             <button
               key={i}
-              onClick={() => setIdx(i)}
-              className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                i === idx ? 'bg-white' : 'bg-white/40'
+              onClick={() => switchSection(i)}
+              className={`px-2.5 py-1 text-[10px] uppercase tracking-[0.15em] border transition-colors shrink-0 ${
+                clampedSection === i
+                  ? 'bg-black text-white border-black'
+                  : 'border-gray-200 hover:border-black text-[#696969]'
               }`}
-            />
+            >
+              {sec.label}
+            </button>
           ))}
         </div>
       )}
+
+      {/* Thumbnail strip + main image */}
+      <div className="flex gap-2 p-3">
+        {/* Vertical thumbnail strip — visible when 2+ images */}
+        {images.length > 1 && (
+          <div className="flex flex-col gap-1.5 w-[52px] shrink-0">
+            {images.map((img, i) => (
+              <button
+                key={i}
+                onClick={() => setActiveImg(i)}
+                className={`w-full shrink-0 overflow-hidden border-[1.5px] transition-colors ${
+                  clampedImg === i
+                    ? 'border-black'
+                    : 'border-transparent hover:border-gray-300'
+                }`}
+                style={{ aspectRatio: '4 / 5' }}
+              >
+                <img src={img} alt="" className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Main image */}
+        <div className="flex-1 bg-gray-100 overflow-hidden" style={{ aspectRatio: '4 / 5' }}>
+          <img src={mainSrc} alt={currentSection.label} className="w-full h-full object-cover" />
+        </div>
+      </div>
     </div>
   );
 }
@@ -69,34 +100,55 @@ function ComboCard({ combo, products }: { combo: DbCombo; products: DbProduct[] 
   const [selectedSizes, setSelectedSizes] = useState<Record<string, string>>({});
   const [added, setAdded] = useState(false);
 
-  // Carousel images: custom image_url first, then one image per product in the combo
-  const carouselImages: string[] = [];
-  if (combo.image_url) carouselImages.push(combo.image_url);
-  combo.items.forEach((item) => { if (item.image) carouselImages.push(item.image); });
+  // Build gallery sections
+  const gallerySections: GallerySection[] = [];
 
-  const savings  = Number(combo.original_price) - Number(combo.combo_price);
-  const pct      = Number(combo.original_price) > 0
+  if (combo.image_url) {
+    gallerySections.push({ label: 'Bundle', images: [combo.image_url] });
+  }
+
+  combo.items.forEach((item) => {
+    const product = products.find((p) => p.id === item.product_id);
+    const images: string[] = [];
+
+    if (product?.image_groups?.length) {
+      product.image_groups.forEach((g) => images.push(...(g.images ?? [])));
+    } else if (item.image) {
+      images.push(item.image);
+    }
+
+    if (images.length > 0) {
+      gallerySections.push({ label: item.product_name, images });
+    }
+  });
+
+  const savings = Number(combo.original_price) - Number(combo.combo_price);
+  const pct     = Number(combo.original_price) > 0
     ? Math.round((savings / Number(combo.original_price)) * 100)
     : 0;
 
   const allSelected = combo.items.every((item) => selectedSizes[item.product_id]);
 
+  const primaryImage =
+    combo.image_url ||
+    gallerySections[0]?.images[0] ||
+    '';
+
   function handleAddBundle() {
     if (!allSelected) return;
 
-    // Encode all sizes into the `size` field so the cart can deduplicate correctly
     const sizeKey = combo.items.map((i) => selectedSizes[i.product_id]).join(',');
 
     addItem({
-      productId: combo.id,
+      productId:    combo.id,
       productTitle: combo.name,
-      price: Number(combo.combo_price),
-      image: carouselImages[0] ?? '',
-      size: sizeKey,
-      isCombo: true,
-      comboItems: combo.items.map((item) => ({
+      price:        Number(combo.combo_price),
+      image:        primaryImage,
+      size:         sizeKey,
+      isCombo:      true,
+      comboItems:   combo.items.map((item) => ({
         productName: item.product_name,
-        size: selectedSizes[item.product_id],
+        size:        selectedSizes[item.product_id],
       })),
       quantity: 1,
     });
@@ -109,9 +161,9 @@ function ComboCard({ combo, products }: { combo: DbCombo; products: DbProduct[] 
     <div className="border border-gray-100 bg-white overflow-hidden">
       <div className="flex flex-col md:flex-row">
 
-        {/* ── Left: carousel ── */}
-        <div className="md:w-[280px] shrink-0">
-          <ComboCarousel images={carouselImages} title={combo.name} />
+        {/* ── Left: gallery ── */}
+        <div className="md:w-[300px] shrink-0 border-b md:border-b-0 md:border-r border-gray-50">
+          <ComboGallery sections={gallerySections} />
         </div>
 
         {/* ── Right: details ── */}
@@ -149,7 +201,7 @@ function ComboCard({ combo, products }: { combo: DbCombo; products: DbProduct[] 
             )}
           </div>
 
-          {/* Includes label */}
+          {/* Includes */}
           <div>
             <p className="text-[10px] uppercase tracking-[0.22em] text-[#696969] mb-3">Includes</p>
             <div className="flex flex-col gap-4">

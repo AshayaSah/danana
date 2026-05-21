@@ -1,9 +1,22 @@
 'use client';
-import type { FormEvent, ReactNode } from 'react';
+import type { FormEvent, ChangeEvent, ReactNode } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { PlusCircle, Pencil, Trash2, X, ArrowLeft } from 'lucide-react';
+import { PlusCircle, Pencil, Trash2, X, ArrowLeft, Upload, RefreshCw, Link2 } from 'lucide-react';
 import type { DbCombo, ComboItem, DbProduct } from '@/lib/types';
+
+async function uploadToCloudinary(file: File): Promise<string> {
+  const cloudName    = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+  if (!cloudName || !uploadPreset) throw new Error('Cloudinary env vars not set.');
+  const body = new FormData();
+  body.append('file', file);
+  body.append('upload_preset', uploadPreset);
+  const res  = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: 'POST', body });
+  if (!res.ok) throw new Error('Upload failed');
+  const data = await res.json();
+  return `https://res.cloudinary.com/${cloudName}/image/upload/q_auto,f_auto/${data.public_id}`;
+}
 
 function toSlug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -40,9 +53,13 @@ export function AdminCombos() {
   const [view,     setView]     = useState<'list' | 'form'>('list');
   const [editId,   setEditId]   = useState<string | null>(null);
   const [form,     setForm]     = useState<FormState>(EMPTY);
-  const [busy,     setBusy]     = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [addPid,   setAddPid]   = useState('');
+  const [busy,       setBusy]       = useState(false);
+  const [deleteId,   setDeleteId]   = useState<string | null>(null);
+  const [addPid,     setAddPid]     = useState('');
+  const [uploading,  setUploading]  = useState(false);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [urlInput,   setUrlInput]   = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     const [c, p] = await Promise.all([
@@ -55,9 +72,9 @@ export function AdminCombos() {
 
   useEffect(() => { load(); }, [load]);
 
-  function openAdd() { setEditId(null); setForm(EMPTY); setView('form'); }
-  function openEdit(c: DbCombo) { setEditId(c.id); setForm(comboToForm(c)); setView('form'); }
-  function closeForm() { setView('list'); setEditId(null); setForm(EMPTY); }
+  function openAdd() { setEditId(null); setForm(EMPTY); setShowUrlInput(false); setUrlInput(''); setView('form'); }
+  function openEdit(c: DbCombo) { setEditId(c.id); setForm(comboToForm(c)); setShowUrlInput(false); setUrlInput(''); setView('form'); }
+  function closeForm() { setView('list'); setEditId(null); setForm(EMPTY); setShowUrlInput(false); setUrlInput(''); }
 
   function setF<K extends keyof FormState>(k: K, v: FormState[K]) {
     setForm(c => ({ ...c, [k]: v }));
@@ -85,6 +102,30 @@ export function AdminCombos() {
     const items = form.items.filter(i => i.product_id !== pid);
     const autoOriginal = items.reduce((s, i) => s + i.base_price, 0);
     setForm(c => ({ ...c, items, original_price: String(autoOriginal) }));
+  }
+
+
+  async function handleBannerFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = await uploadToCloudinary(file);
+      setF('image_url', url);
+    } catch (err) {
+      alert((err as Error).message);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  function handleUrlAdd() {
+    const url = urlInput.trim();
+    if (!url) return;
+    setF('image_url', url);
+    setUrlInput('');
+    setShowUrlInput(false);
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -122,6 +163,9 @@ export function AdminCombos() {
       <h2 className="text-2xl font-medium mb-1">{editId ? 'Edit combo' : 'New combo'}</h2>
       <p className="text-[13px] text-[#696969] mb-8">Bundle multiple products at a discounted price.</p>
 
+      {/* Hidden file input for banner upload */}
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerFileChange} />
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-8">
         <Sec title="Basic">
           <div className="grid sm:grid-cols-2 gap-6">
@@ -145,6 +189,103 @@ export function AdminCombos() {
             <label className={LBL}>Description</label>
             <textarea value={form.description} onChange={e => setF('description', e.target.value)} rows={2} className={CLS + ' resize-none'} placeholder="What does this bundle include?" />
           </div>
+        </Sec>
+
+        <Sec title="Images">
+          <label className={LBL}>Combo banner image</label>
+
+          {form.image_url ? (
+            /* ── Preview + actions ── */
+            <div className="flex gap-4 items-start">
+              <div className="w-40 shrink-0 bg-gray-100 overflow-hidden" style={{ aspectRatio: '4/5' }}>
+                <img src={form.image_url} alt="Banner" className="w-full h-full object-cover" />
+              </div>
+              <div className="flex flex-col gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="flex items-center gap-1.5 text-[12px] text-[#696969] hover:text-black transition-colors disabled:opacity-40"
+                >
+                  {uploading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                  {uploading ? 'Uploading…' : 'Replace image'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowUrlInput(v => !v)}
+                  className="flex items-center gap-1.5 text-[12px] text-[#696969] hover:text-black transition-colors"
+                >
+                  <Link2 className="h-3.5 w-3.5" /> Paste URL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setF('image_url', '')}
+                  className="flex items-center gap-1.5 text-[12px] text-[#FA5D42] hover:text-red-700 transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" /> Remove
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* ── Empty upload CTA ── */
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="w-full flex flex-col items-center justify-center gap-2 py-10 border border-dashed border-gray-200 bg-gray-50 hover:border-black hover:bg-white transition-colors disabled:opacity-40"
+            >
+              {uploading ? (
+                <><RefreshCw className="h-5 w-5 text-[#696969] animate-spin" /><span className="text-[12px] text-[#696969]">Uploading…</span></>
+              ) : (
+                <><Upload className="h-5 w-5 text-[#696969]" /><span className="text-[13px] font-medium">Upload banner image</span><span className="text-[11px] text-[#aaa]">Click to select a file</span></>
+              )}
+            </button>
+          )}
+
+          {/* Action bar below empty state */}
+          {!form.image_url && (
+            <div className="flex items-center gap-3 mt-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="flex items-center gap-1.5 text-[12px] text-[#696969] hover:text-black transition-colors disabled:opacity-40"
+              >
+                <Upload className="h-3.5 w-3.5" /> Upload from device
+              </button>
+              <span className="text-[#ddd]">|</span>
+              <button
+                type="button"
+                onClick={() => setShowUrlInput(v => !v)}
+                className="flex items-center gap-1.5 text-[12px] text-[#696969] hover:text-black transition-colors"
+              >
+                <Link2 className="h-3.5 w-3.5" /> Paste URL
+              </button>
+            </div>
+          )}
+
+          {/* URL paste input */}
+          {showUrlInput && (
+            <div className="flex items-center gap-2 mt-2">
+              <input
+                value={urlInput}
+                onChange={e => setUrlInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleUrlAdd())}
+                placeholder="https://res.cloudinary.com/…"
+                className="flex-1 border-b border-gray-200 py-1.5 text-[11px] font-mono outline-none focus:border-black bg-transparent placeholder:text-[#aaa]"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={handleUrlAdd}
+                className="text-[12px] font-medium px-3 py-1.5 bg-black text-white hover:bg-black/80 transition-colors shrink-0"
+              >
+                Add
+              </button>
+            </div>
+          )}
+
+          <p className="text-[11px] text-[#aaa] mt-2">Used as the main visual for this combo on the storefront.</p>
         </Sec>
 
         <Sec title="Products in bundle">

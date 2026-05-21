@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 
 export function AdminLoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState('2002nischal@gmail.com');
-  const [password, setPassword] = useState('abcdefgh');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
