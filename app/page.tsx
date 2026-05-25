@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getFeaturedProducts, getProducts, getCombos } from '@/lib/db';
 import { ProductCard } from '@/components/product-card';
@@ -5,7 +6,52 @@ import type { ComboItem } from '@/lib/types';
 
 export const revalidate = 60;
 
+const APP_URL = process.env.APP_URL ?? 'https://danana.com.np';
 const heroImage = '/hero_banner.png';
+
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+  openGraph: {
+    url: APP_URL,
+    images: [{ url: heroImage, width: 1200, height: 630, alt: 'DANANA — World Cup Jerseys Nepal' }],
+  },
+};
+
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'DANANA',
+  url: APP_URL,
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: {
+      '@type': 'EntryPoint',
+      urlTemplate: `${APP_URL}/all-products?q={search_term_string}`,
+    },
+    'query-input': 'required name=search_term_string',
+  },
+};
+
+const organizationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'DANANA',
+  url: APP_URL,
+  logo: `${APP_URL}/logo.png`,
+  contactPoint: {
+    '@type': 'ContactPoint',
+    telephone: '+977-9810126827',
+    contactType: 'customer service',
+    areaServed: 'NP',
+    availableLanguage: ['English', 'Nepali'],
+  },
+  address: {
+    '@type': 'PostalAddress',
+    addressLocality: 'Kathmandu',
+    addressCountry: 'NP',
+  },
+  sameAs: [],
+};
 
 export default async function HomePage() {
   const [featured, all, combos] = await Promise.all([
@@ -18,10 +64,18 @@ export default async function HomePage() {
 
   return (
     <div className="flex flex-col pb-16">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+      />
 
       {/* ── Hero ── */}
       <section className="h-[calc(100vh-5rem)] relative overflow-hidden bg-gray-100">
-        <img src={heroImage} alt="DANANA — New Season Collection"
+        <img src={heroImage} alt="DANANA — World Cup Jerseys Nepal"
           className="w-full h-full object-cover object-center" />
         <div className="absolute inset-0 bg-black/15" />
         <div className="absolute bottom-10 left-0 right-0">

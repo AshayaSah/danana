@@ -1,41 +1,52 @@
-'use client';
-import { useState } from 'react';
+import type { Metadata } from 'next';
+import { ContactForm } from '@/components/contact-form';
+
+export const metadata: Metadata = {
+  title: 'Contact Us',
+  description:
+    'Get in touch with DANANA. Call or WhatsApp us at +977 9810126827, email dananafits@gmail.com, or use the form. Based in Kathmandu — we reply within 24 hours.',
+  alternates: { canonical: '/contact' },
+  openGraph: {
+    title: 'Contact DANANA',
+    description:
+      "Reach out for orders, custom kits, or any questions. We're based in Kathmandu and reply within 24 hours.",
+  },
+};
+
+const localBusinessSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'ClothingStore',
+  name: 'DANANA',
+  description: 'World Cup jerseys, national team kits, and sportswear based in Kathmandu, Nepal.',
+  url: 'https://danana.com.np',
+  telephone: '+977-9810126827',
+  email: 'dananafits@gmail.com',
+  address: {
+    '@type': 'PostalAddress',
+    addressLocality: 'Kathmandu',
+    addressCountry: 'NP',
+  },
+  openingHoursSpecification: [
+    {
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+      opens: '10:00',
+      closes: '18:00',
+    },
+  ],
+  currenciesAccepted: 'NPR',
+  paymentAccepted: 'Cash, Online Payment',
+  areaServed: 'Nepal',
+};
 
 export default function ContactPage() {
-  const [form,    setForm]    = useState({ name: '', phone: '', email: '', message: '' });
-  const [busy,    setBusy]    = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error,   setError]   = useState('');
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError('');
-    try {
-      const res = await fetch('/api/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error ?? 'Something went wrong. Please try again.');
-        return;
-      }
-      setSuccess(true);
-      setForm({ name: '', phone: '', email: '', message: '' });
-    } catch {
-      setError('Could not send message. Please try again.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const LBL = 'block text-[10px] uppercase tracking-[0.22em] text-[#696969] mb-2';
-  const INP = 'w-full border-b border-gray-300 py-2.5 text-sm outline-none focus:border-black transition-colors bg-transparent placeholder:text-[#aaa]';
-
   return (
     <div className="flex flex-col pb-20">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }}
+      />
+
       <section className="max-w-[1100px] mx-auto w-full px-4 sm:px-6 py-16">
 
         <div className="mb-12">
@@ -49,16 +60,16 @@ export default function ContactPage() {
           <div className="flex flex-col gap-8">
             <div>
               <p className="text-[11px] uppercase tracking-[0.22em] text-[#696969] mb-3">Phone</p>
-              <a href="tel:+9779800000000" className="text-[15px] text-black hover:opacity-60 transition-opacity">
-                +977 98-0000-0000
+              <a href="tel:+9779810126827" className="text-[15px] text-black hover:opacity-60 transition-opacity">
+                +977 9810126827
               </a>
               <p className="text-[12px] text-[#696969] mt-1">Sun – Fri, 10am – 6pm NPT</p>
             </div>
 
             <div>
               <p className="text-[11px] uppercase tracking-[0.22em] text-[#696969] mb-3">Email</p>
-              <a href="mailto:hello@danana.com.np" className="text-[15px] text-black hover:opacity-60 transition-opacity">
-                hello@danana.com.np
+              <a href="mailto:dananafits@gmail.com" className="text-[15px] text-black hover:opacity-60 transition-opacity">
+                dananafits@gmail.com
               </a>
               <p className="text-[12px] text-[#696969] mt-1">We reply within 24 hours</p>
             </div>
@@ -70,73 +81,7 @@ export default function ContactPage() {
           </div>
 
           {/* Right — form */}
-          <div>
-            {success ? (
-              <div className="bg-[#f0fdf4] border border-[#bbf7d0] px-6 py-8 text-center">
-                <p className="text-[18px] font-medium text-black mb-2">Message received!</p>
-                <p className="text-[14px] text-[#696969]">
-                  Thank you for reaching out. We'll get back to you within 24 hours.
-                </p>
-                <button
-                  onClick={() => setSuccess(false)}
-                  className="mt-6 border border-gray-300 px-5 py-2 text-[13px] hover:border-black transition-colors"
-                >
-                  Send another message
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                <div className="grid sm:grid-cols-2 gap-6">
-                  <div>
-                    <label className={LBL}>Name <span className="text-[#FA5D42]">*</span></label>
-                    <input
-                      required value={form.name}
-                      onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                      className={INP} placeholder="Your name"
-                    />
-                  </div>
-                  <div>
-                    <label className={LBL}>Phone <span className="text-[#FA5D42]">*</span></label>
-                    <input
-                      required value={form.phone}
-                      onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                      className={INP} placeholder="98XXXXXXXX" type="tel"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className={LBL}>
-                    Email <span className="text-[#aaa] normal-case tracking-normal font-normal">· optional</span>
-                  </label>
-                  <input
-                    value={form.email} type="email"
-                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                    className={INP} placeholder="you@example.com"
-                  />
-                </div>
-
-                <div>
-                  <label className={LBL}>Message <span className="text-[#FA5D42]">*</span></label>
-                  <textarea
-                    required rows={5} value={form.message}
-                    onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
-                    className={INP + ' resize-none'}
-                    placeholder="Tell us how we can help…"
-                  />
-                </div>
-
-                {error && <p className="text-[13px] text-[#FA5D42]">{error}</p>}
-
-                <button
-                  type="submit" disabled={busy}
-                  className="bg-black text-white py-3.5 text-[13px] font-medium tracking-wide hover:bg-black/80 transition-colors disabled:opacity-50"
-                >
-                  {busy ? 'Sending…' : 'Send Message'}
-                </button>
-              </form>
-            )}
-          </div>
+          <ContactForm />
         </div>
       </section>
     </div>

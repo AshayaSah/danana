@@ -1,12 +1,56 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'About Us — Our Story',
+  description:
+    'DANANA was born in Kathmandu out of a simple need — quality World Cup jerseys and football kits that feel local, look sharp, and are priced fairly for everyone in Nepal.',
+  alternates: { canonical: '/about' },
+  openGraph: {
+    title: 'About DANANA — Our Story',
+    description:
+      'Born in Kathmandu. Built for Nepal. DANANA makes World Cup jerseys, national team kits, and sportswear with clean design, honest materials, and fair pricing.',
+  },
+};
+
+const organizationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'DANANA',
+  url: 'https://danana.com.np',
+  logo: 'https://danana.com.np/logo.png',
+  description:
+    'Kathmandu-based sportswear brand making World Cup jerseys, national team kits, and activewear — clean design, honest materials, fairly priced for Nepal.',
+  foundingLocation: {
+    '@type': 'Place',
+    name: 'Kathmandu, Nepal',
+  },
+  address: {
+    '@type': 'PostalAddress',
+    addressLocality: 'Kathmandu',
+    addressCountry: 'NP',
+  },
+  contactPoint: {
+    '@type': 'ContactPoint',
+    telephone: '+977-9810126827',
+    email: 'dananafits@gmail.com',
+    contactType: 'customer service',
+    areaServed: 'NP',
+  },
+};
+
 export default function AboutPage() {
   return (
     <div className="flex flex-col pb-20">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+      />
 
       {/* Hero */}
       <section className="relative h-[50vh] min-h-[340px] overflow-hidden bg-gray-100">
         <img
-          src="https://images.unsplash.com/photo-1556906781-9a412961a28c?auto=format&fit=crop&q=80&w=2400"
-          alt="DANANA"
+          src="/hero_banner.png"
+          alt="DANANA — World Cup Jerseys Made for Nepal"
           className="w-full h-full object-cover object-center"
         />
         <div className="absolute inset-0 bg-black/40" />

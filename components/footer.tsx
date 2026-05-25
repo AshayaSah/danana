@@ -117,7 +117,7 @@ export function Footer() {
             <div className="max-w-xs shrink-0">
               <p className="text-[11px] uppercase tracking-[0.25em] text-[#696969] mb-2">Exclusive offer</p>
               <h3 className="text-[28px] font-semibold text-black leading-tight">
-                Save 10% on your purchase today.
+                Subscribe to Save 5% on your purchase today.
               </h3>
               <p className="text-[13px] text-[#696969] mt-3 leading-relaxed">
                 Subscribe and get an instant discount code for your first order.
@@ -167,7 +167,7 @@ export function Footer() {
                 type="submit" disabled={busy}
                 className="self-start bg-black text-white px-8 py-3 text-[13px] font-medium hover:bg-black/90 transition-colors disabled:opacity-50"
               >
-                {busy ? 'Subscribing…' : 'Get my 10% off'}
+                {busy ? 'Subscribing…' : 'Get my 5% off'}
               </button>
             </form>
           </div>
