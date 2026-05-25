@@ -1,15 +1,41 @@
-'use client';
-import { useState } from 'react';
-import { Plus, Minus } from 'lucide-react';
+import type { Metadata } from 'next';
 import faqData from '@/lib/faq.json';
+import { FaqClient } from '@/components/faq-client';
+
+export const metadata: Metadata = {
+  title: 'FAQ — Frequently Asked Questions',
+  description:
+    'Got questions about DANANA jerseys, delivery, returns, sizing, or bulk orders? Find quick answers in our FAQ — or reach out and we\'ll reply within 24 hours.',
+  alternates: { canonical: '/faq' },
+  openGraph: {
+    title: 'FAQ | DANANA',
+    description:
+      'Answers to common questions about ordering World Cup jerseys, delivery times across Nepal, returns, sizing, and custom kit orders.',
+  },
+};
 
 export default function FAQPage() {
-  const [open, setOpen] = useState<number | null>(0);
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqData.map(item => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.answer,
+      },
+    })),
+  };
 
   return (
     <div className="flex flex-col pb-20">
-      <section className="max-w-[760px] mx-auto w-full px-4 sm:px-6 py-16">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
 
+      <section className="max-w-[760px] mx-auto w-full px-4 sm:px-6 py-16">
         <div className="mb-12">
           <p className="text-[11px] uppercase tracking-[0.28em] text-[#696969] mb-2">Help centre</p>
           <h1 className="text-[32px] font-semibold text-black">Frequently Asked Questions</h1>
@@ -19,27 +45,7 @@ export default function FAQPage() {
           </p>
         </div>
 
-        <div className="flex flex-col">
-          {faqData.map((item, i) => (
-            <div key={i} className="border-b border-gray-100">
-              <button
-                onClick={() => setOpen(open === i ? null : i)}
-                className="w-full flex items-center justify-between gap-4 py-5 text-left"
-              >
-                <span className={`text-[15px] font-medium transition-colors ${open === i ? 'text-black' : 'text-[#333]'}`}>
-                  {item.question}
-                </span>
-                <span className="shrink-0 text-[#696969]">
-                  {open === i ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                </span>
-              </button>
-
-              <div className={`overflow-hidden transition-all duration-200 ease-out ${open === i ? 'max-h-96 pb-5' : 'max-h-0'}`}>
-                <p className="text-[14px] text-[#696969] leading-relaxed">{item.answer}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+        <FaqClient items={faqData} />
       </section>
     </div>
   );
